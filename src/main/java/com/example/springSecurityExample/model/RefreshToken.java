@@ -27,10 +27,9 @@ public class RefreshToken {
 
     private Instant expiresAt;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "username")
     private Users user;
-
 
 }
 

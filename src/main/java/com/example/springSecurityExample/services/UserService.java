@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,9 +26,13 @@ public class UserService {
     private AuthenticationManager authenticationManager;
 
 
-    public Users register(Users user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepo.save(user);
+    public String register(Users user) {
+        if (userRepo.findByUsername(user.getUsername()).isEmpty()){
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            userRepo.save(user);
+            return  "Successfully registered";
+        }
+        throw new UsernameNotFoundException("Username already exists");
     }
 
 
@@ -37,7 +42,7 @@ public class UserService {
             return JwtResponse
                     .builder()
                     .accessToken(jwtService.generateToken(user.getUsername()))
-                    .refreshToken(refreshTokenService.generateRefreshToken(user.getUsername()).getToken())
+                    .refreshToken(refreshTokenService.generateRefreshToken(user.getUsername()))
                     .build();
         }
         throw new IllegalStateException("username or password is incorrect ");
