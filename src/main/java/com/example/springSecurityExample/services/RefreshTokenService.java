@@ -2,12 +2,16 @@ package com.example.springSecurityExample.services;
 
 import com.example.springSecurityExample.dto.JwtResponse;
 import com.example.springSecurityExample.model.RefreshToken;
+import com.example.springSecurityExample.model.Users;
 import com.example.springSecurityExample.repo.RefreshTokenRepo;
-import com.example.springSecurityExample.repo.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,19 +19,32 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     @Autowired
-    private UserRepo userRepo;
+    private UserDetailsService userDetailsService;
     @Autowired
     private JwtService jwtService;
     @Autowired
     private RefreshTokenRepo refreshTokenRepo;
 
-    public RefreshToken generateRefreshToken(String username) {
+
+    public String stringHashing(String str) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(str.getBytes());
+            return HexFormat.of().formatHex(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String generateRefreshToken(String username) {
+        String token = UUID.randomUUID().toString();
         RefreshToken refreshToken = RefreshToken.builder()
-                .user(userRepo.findByUsername(username))
-                .token(UUID.randomUUID().toString())
+                .user((Users) userDetailsService.loadUserByUsername(username))
+                .token(stringHashing(token))
                 .expiresAt(Instant.now().plusMillis(1000 * 60 * 5))
                 .build();
-        return refreshTokenRepo.save(refreshToken);
+        refreshTokenRepo.save(refreshToken);
+        return token;
     }
 
     public RefreshToken verifyExpiration(RefreshToken token) {
@@ -39,7 +56,7 @@ public class RefreshTokenService {
     }
 
     public JwtResponse generateNewToken(String refreshToken) {
-        Optional<RefreshToken> token = refreshTokenRepo.findByToken(refreshToken);
+        Optional<RefreshToken> token = refreshTokenRepo.findByToken(stringHashing(refreshToken));
 
         if (token.isPresent()) {
             String newAccessToken = jwtService.generateToken(

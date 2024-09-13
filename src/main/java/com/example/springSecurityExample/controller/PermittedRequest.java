@@ -20,7 +20,7 @@ public class PermittedRequest {
     private RefreshTokenService refreshTokenService;
 
     @PostMapping("/register")
-    public Users addUser(@RequestBody Users user) {
+    public String addUser(@RequestBody Users user) {
         return userService.register(user);
     }
 
